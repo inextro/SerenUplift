@@ -74,7 +74,7 @@ class TLearner():
             n_jobs (int): A number of CPU cores to be used
 
         Returns: 
-            pd.DataFrame: A dataframe with columns of ['remap_userId', 'remap_movieId', 'uplift_score']
+            pd.DataFrame: A dataframe with columns of ['remap_userId', 'remap_movieId', 'uplift_score', 'pred_prior', 'pred_post']
         """
         num_users = self.user_embs.shape[0]
         num_movies = self.movie_embs.shape[0]
@@ -93,7 +93,7 @@ class TLearner():
 
         df = pd.DataFrame(
             flat_uplift_scores, 
-            columns=['remap_userId', 'remap_movieId', 'uplift_score']
+            columns=['remap_userId', 'remap_movieId', 'uplift_score', 'pred_prior', 'pred_post']
         )
 
         return df
@@ -142,14 +142,14 @@ class TLearner():
 
             X_batch = np.concatenate((user_emb, self.movie_embs), axis=1)
 
-            pred_prior = self.prior_model.predict(X_batch)
-            pred_post = self.post_model.predict(X_batch)
+            pred_priors = self.prior_model.predict(X_batch)
+            pred_posts = self.post_model.predict(X_batch)
 
-            uplift_scores = pred_post - pred_prior
+            uplift_scores = pred_posts - pred_priors
 
             batch_results.extend([
-                [user_idx, movie_idx, score]
-                for movie_idx, score in enumerate(uplift_scores)
+                [user_idx, movie_idx, uplift_score, pred_prior, pred_post]
+                for movie_idx, (uplift_score, pred_prior, pred_post) in enumerate(zip(uplift_scores, pred_priors, pred_posts))
             ])
 
         return batch_results
