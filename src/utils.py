@@ -2,6 +2,7 @@ import os
 import sys
 import torch
 import numpy as np
+import pandas as pd
 
 LIGHTGCN_CODE_PATH = './lgcn/code'
 if LIGHTGCN_CODE_PATH not in sys.path:
@@ -11,14 +12,14 @@ if len(sys.argv) == 1:
     sys.argv.extend([
         '--dataset', 'movielens', 
         '--layer', '2', 
-        '--recdim', '8'
+        '--recdim', '16'
     ])
 import world
 import model
 import dataloader
 
 
-def main():
+def get_embeddings():
     world.device = torch.device('cpu')
 
     print(f'Current Dataset: {world.dataset}')
@@ -44,8 +45,14 @@ def main():
     return user_emb.numpy(), movie_emb.numpy()
 
 
+def load_id_map(map_path):
+    df = pd.read_csv(map_path, sep=' ')
+
+    return df.set_index('org_id')['remap_id'].to_dict()
+
+
 if __name__ == '__main__':
-    user_emb, movie_emb = main()
+    user_emb, movie_emb = get_embeddings()
 
     print(f'Total number of users: {user_emb.shape[0]}')
     print(f'Total number of movies: {movie_emb.shape[0]}')

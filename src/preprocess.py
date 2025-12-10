@@ -33,20 +33,24 @@ class Preprocessor:
 
         return df
 
-    def id_mapping(self, df, output_path):
-        unique_users = df['userId'].unique()
-        user_map = {org_id: i for i, org_id in enumerate(unique_users)}
+    def id_mapping(self, df, output_path=None):
+            unique_users = df['userId'].unique()
+            user_map = {org_id: i for i, org_id in enumerate(unique_users)}
 
-        unique_movies = df['movieId'].unique()
-        movie_map = {org_id: i for i, org_id in enumerate(unique_movies)}
+            unique_movies = df['movieId'].unique()
+            movie_map = {org_id: i for i, org_id in enumerate(unique_movies)}
 
-        user_list = pd.DataFrame(user_map.items(), columns=['org_id', 'remap_id'])
-        user_list.to_csv(os.path.join(output_path, 'user_lists.txt'), sep=' ', index=False)
+            if output_path == None:
+                return user_map, movie_map
+            
+            elif output_path:
+                user_list = pd.DataFrame(user_map.items(), columns=['org_id', 'remap_id'])
+                user_list.to_csv(os.path.join(output_path, 'user_list.txt'), sep=' ', index=False)
 
-        movie_list = pd.DataFrame(movie_map.items(), columns=['org_id', 'remap_id'])
-        movie_list.to_csv(os.path.join(output_path, 'item_list.txt'), sep=' ', index=False)
+                movie_list = pd.DataFrame(movie_map.items(), columns=['org_id', 'remap_id'])
+                movie_list.to_csv(os.path.join(output_path, 'item_list.txt'), sep=' ', index=False)
 
-        return user_map, movie_map
+            return user_map, movie_map
 
     def preprocess(self):
         self.prior = self.prior[self.prior['isSeen'] == 0]
