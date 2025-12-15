@@ -15,7 +15,7 @@ class TLearner():
     """
     def __init__(self, prior_model, post_model, user_emb_path, movie_emb_path):
         """
-        Args: 
+        Args:
             prior_model (object): Any regression model object to predict prior rating
             post_model (object): Any regression model object to predict post rating
             user_emb_path (str): User embedding path (.npy)
@@ -27,12 +27,12 @@ class TLearner():
         self.movie_embs = np.load(movie_emb_path)
         self.user_map = load_id_map('./lgcn/data/movielens/user_list.txt')
         self.movie_map = load_id_map('./lgcn/data/movielens/item_list.txt')
-    
+
     def fit(self, prior_data, post_data):
         """
         Fit prior model and post model
-        
-        Args: 
+
+        Args:
             prior_data (pd.DataFrame): (Preprocessed) Prior rating data
             post_data (pd.DataFrame): (Preprocessed) Post rating data
         """
@@ -70,10 +70,10 @@ class TLearner():
         """
         Compute uplift score for all possible combinations of (user X movie)
 
-        Args: 
+        Args:
             n_jobs (int): A number of CPU cores to be used
 
-        Returns: 
+        Returns:
             pd.DataFrame: A dataframe with columns of ['remap_userId', 'remap_movieId', 'uplift_score', 'pred_prior', 'pred_post']
         """
         num_users = self.user_embs.shape[0]
@@ -92,7 +92,7 @@ class TLearner():
         flat_uplift_scores = [score for uplift_score in uplift_scores for score in uplift_score]
 
         df = pd.DataFrame(
-            flat_uplift_scores, 
+            flat_uplift_scores,
             columns=['remap_userId', 'remap_movieId', 'uplift_score', 'pred_prior', 'pred_post']
         )
 
@@ -103,10 +103,10 @@ class TLearner():
         Create input feature for regression models to predict prior/post rating
         The input feature is created by concatenate [user_embedding, movie_embedding]
 
-        Args: 
+        Args:
             df (pd.DataFrame): A dataframe of prior/post rating
-        
-        Returns: 
+
+        Returns:
 
         """
         df = df.copy()
@@ -128,11 +128,11 @@ class TLearner():
         """
         Compute uplift scores for all movies for the assigned users
 
-        Args: 
+        Args:
             user_indices (np.ndarray): An array of user indices to process
 
         Returns:
-            list: A list of [user_idx, movie_idx, uplift_score] 
+            list: A list of [user_idx, movie_idx, uplift_score]
         """
         batch_results = []
         num_movies = self.movie_embs.shape[0]

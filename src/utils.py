@@ -1,8 +1,9 @@
 import os
 import sys
-import torch
+
 import numpy as np
 import pandas as pd
+import torch
 
 LIGHTGCN_CODE_PATH = './lgcn/code'
 if LIGHTGCN_CODE_PATH not in sys.path:
@@ -10,13 +11,13 @@ if LIGHTGCN_CODE_PATH not in sys.path:
 
 if len(sys.argv) == 1:
     sys.argv.extend([
-        '--dataset', 'movielens', 
-        '--layer', '2', 
+        '--dataset', 'movielens',
+        '--layer', '2',
         '--recdim', '16'
     ])
-import world
-import model
 import dataloader
+import model
+import world
 
 
 def get_embeddings():
@@ -29,7 +30,10 @@ def get_embeddings():
     rec_model = model.LightGCN(config=world.config, dataset=dataset)
     rec_model = rec_model.to(world.device)
 
-    checkpoint_file = f'{world.model_name}-{world.dataset}-{world.config['lightGCN_n_layers']}-{world.config['latent_dim_rec']}.pth.tar'
+    checkpoint_file = (
+        f'{world.model_name}-{world.dataset}-'
+        f'{world.config['lightGCN_n_layers']}-{world.config['latent_dim_rec']}.pth.tar'
+    )
     checkpoint_path = os.path.join(world.FILE_PATH, checkpoint_file)
     print(f'Load checkpoints from {checkpoint_path}')
 
@@ -38,7 +42,7 @@ def get_embeddings():
 
     rec_model.eval()
     print('Update Embeddings')
-    
+
     with torch.no_grad():
         user_emb, movie_emb = rec_model.computer()
 

@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -6,13 +7,12 @@ from tqdm import tqdm
 
 class Preprocessor:
     def __init__(
-        self, 
-        prior_path='./data/raw_data/belief_data.csv', 
+        self,
+        prior_path='./data/raw_data/belief_data.csv',
         post_path='./data/raw_data/user_rating_history.csv'
     ):
         self.prior = pd.read_csv(prior_path)
         self.post = pd.read_csv(post_path)
-
 
     def _k_core_filter(self, df, k):
         df = df.copy()
@@ -34,23 +34,23 @@ class Preprocessor:
         return df
 
     def id_mapping(self, df, output_path=None):
-            unique_users = df['userId'].unique()
-            user_map = {org_id: i for i, org_id in enumerate(unique_users)}
+        unique_users = df['userId'].unique()
+        user_map = {org_id: i for i, org_id in enumerate(unique_users)}
 
-            unique_movies = df['movieId'].unique()
-            movie_map = {org_id: i for i, org_id in enumerate(unique_movies)}
+        unique_movies = df['movieId'].unique()
+        movie_map = {org_id: i for i, org_id in enumerate(unique_movies)}
 
-            if output_path == None:
-                return user_map, movie_map
-            
-            elif output_path:
-                user_list = pd.DataFrame(user_map.items(), columns=['org_id', 'remap_id'])
-                user_list.to_csv(os.path.join(output_path, 'user_list.txt'), sep=' ', index=False)
-
-                movie_list = pd.DataFrame(movie_map.items(), columns=['org_id', 'remap_id'])
-                movie_list.to_csv(os.path.join(output_path, 'item_list.txt'), sep=' ', index=False)
-
+        if output_path is None:
             return user_map, movie_map
+
+        elif output_path:
+            user_list = pd.DataFrame(user_map.items(), columns=['org_id', 'remap_id'])
+            user_list.to_csv(os.path.join(output_path, 'user_list.txt'), sep=' ', index=False)
+
+            movie_list = pd.DataFrame(movie_map.items(), columns=['org_id', 'remap_id'])
+            movie_list.to_csv(os.path.join(output_path, 'item_list.txt'), sep=' ', index=False)
+
+        return user_map, movie_map
 
     def preprocess(self):
         self.prior = self.prior[self.prior['isSeen'] == 0]
@@ -64,34 +64,36 @@ class Preprocessor:
 
         core_ratings = self._k_core_filter(df=self.post, k=5)
 
-        print('='*200)
+        print('=' * 200)
         print(f'Total number of ratings(post): {core_ratings.shape[0]:,}')
         print(f'Total number of unique users(post): {core_ratings['userId'].nunique():,}')
         print(f'Total number of unique movies(post): {core_ratings['movieId'].nunique():,}')
-        print('='*200)
+        print('=' * 200)
 
         valid_users = set(core_ratings['userId'].unique())
         valid_movies = set(core_ratings['movieId'].unique())
-        
+
         prior_filtered = self.prior[
             self.prior['userId'].isin(valid_users) & self.prior['movieId'].isin(valid_movies)
         ]
 
-        print('='*200)
+        print('=' * 200)
         print(f'Total number of ratings(prior): {prior_filtered.shape[0]:,}')
         print(f'Total number of unique users(prior): {prior_filtered['userId'].nunique():,}')
         print(f'Total number of unique movies(prior): {prior_filtered['movieId'].nunique():,}')
 
-        return prior_filtered, core_ratings # processed_prior, processed_post
+        return prior_filtered, core_ratings  # processed_prior, processed_post
 
-    def build_lgcn_dataset(self, df, test_ratio=0.2, seed=42, output_path='./lgcn/data/movielens/'):
+    def build_lgcn_dataset(
+        self, df, test_ratio=0.2, seed=42, output_path='./lgcn/data/movielens/'
+    ):
         np.random.seed(seed)
 
         if not os.path.exists(output_path):
             os.makedirs(output_path, exist_ok=True)
 
         user_map, movie_map = self.id_mapping(df=df, output_path=output_path)
-        
+
         df['remap_userId'] = df['userId'].map(user_map)
         df['remap_movieId'] = df['movieId'].map(movie_map)
 

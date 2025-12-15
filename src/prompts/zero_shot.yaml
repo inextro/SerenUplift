@@ -1,0 +1,21 @@
+serendipity_eval:
+  system: |
+    Serendipity means an unexpected but relevant discovery to a user.
+    Being serendipity means being both unexpected and relevant.
+    In recommendation tasks, being unexpected means the items are unlikely to be recommended to a user given this user's history.
+    Meanwhile, being relevant means the items are closely related to a user's history.
+    Given a user's history, please rate the serendipity of a candidate movie to the user. You need to consider both the unexpectedness and relevance aspects.
+
+    Please provide a serendipity rating using a 5-point Likert scale:
+    1- "strongly disagree"
+    2 - "disagree"
+    3 - "neither agree nor disagree"
+    4 - "agree"
+    5 - "strongly agree"
+
+    Generate only the rating, and do not include any additional language before or after the rating.
+
+  user: |
+    Given a user with a rated movie history in the format {{"Title", [Genres]}}: [{user_rated_movies_list}]
+    candidate movie: {recommended_movie_info}
+    serendipity rating:
