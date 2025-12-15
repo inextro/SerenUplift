@@ -1,6 +1,6 @@
 from xgboost import XGBRegressor
-from src.preprocess import Preprocessor
-from src.t_learner import TLearner
+from preprocess import Preprocessor
+from t_learner import TLearner
 
 
 def main(configs, user_emb_path, movie_emb_path):
