@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 import argparse
 from dotenv import load_dotenv
 from src.evaluate import SerendipityEvaluator
@@ -36,7 +37,7 @@ def parse_args():
         help='Path to user rating history file'
     )
     parser.add_argument(
-        '--llm', type=str, default='gpt-5-nano',
+        '--llm', type=str, default='gpt-4o-mini',
         help='Model to use for evaluation'
     )
     parser.add_argument(
@@ -47,9 +48,18 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+async def main():
     load_dotenv()
     args = parse_args()
+
+    history_extension = os.path.splitext(args.user_history_path)[1]
+    rec_filename = os.path.basename(args.rec_path).lower()
+
+    if history_extension == '.txt' and 'lightgcn' not in rec_filename:
+        raise ValueError(f"Compatibiility Mismatch: '.txt' history expects LightGCN results, but got '{rec_filename}'")
+
+    if history_extension == '.csv' and 'seren' not in rec_filename:
+        raise ValueError(f"Compatibiility Mismatch: '.csv' history expects SerenUplift results, but got '{rec_filename}'")
 
     rec_filename = os.path.basename(args.rec_path)
     save_filename = f'{os.path.splitext(rec_filename)[0]}.json'
@@ -71,7 +81,9 @@ def main():
     with open(args.rec_path, 'r') as f:
         recommendations = json.load(f)
 
-    evaluator.evaluate(
+    recommendations = dict(list(recommendations.items())[:5])
+
+    await evaluator.evaluate(
         recommendations=recommendations,
         user_history_path=args.user_history_path,
         output_path=save_path,
@@ -80,4 +92,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

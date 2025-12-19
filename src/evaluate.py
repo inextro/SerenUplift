@@ -1,36 +1,32 @@
 import os
 import re
-import time
 import json
 import yaml
+import asyncio
 import pandas as pd
-from openai import OpenAI
+from tqdm.asyncio import tqdm
+from openai import AsyncOpenAI
 from src.preprocess import Preprocessor
-
-
-def load_id_map(map_path):
-    df = pd.read_csv(map_path, sep=' ')
-    return df.set_index('org_id')['remap_id'].to_dict()
 
 
 class SerendipityEvaluator:
     def __init__(
-        self, user_map_path, movie_map_path, movie_metadata_path, prompt_path,
-        api_key=None, llm='gpt-5-nano'
+        self, user_map_path, movie_map_path, movie_metadata_path, prompt_path, api_key, llm
     ):
         """
-        description
+        Initialize the SerendipityEvaluator with mapping files, metadata, and LLM configuration
 
         Args:
             user_map_path (str): Path to the user list(org_id remap_id) file
             movie_map_path (str): Path to the id map(org_id:remap_id) file
             movie_metadata_path (str): Path to the movie metadata file
             prompt_path (str): Path to the prompt file
-            api_key (str, optional): OpenAI API key (default: None)
-            llm (str, optional): llm name served by OpenAI (default: 'gpt-5-nano')
+            api_key (str): OpenAI API key
+            llm (str): llm name served by OpenAI
         """
         self.api_key = api_key
-        self.llm = llm
+        self.llm_client = AsyncOpenAI(api_key=self.api_key)
+        self.llm_model = llm
         self.movie_metadata_path = movie_metadata_path
         self.user_remap_to_org = self._load_user_map(user_map_path)
         self.movie_remap_to_org = self._load_movie_map(movie_map_path)
@@ -38,7 +34,6 @@ class SerendipityEvaluator:
             movie_map_path=movie_map_path, movie_metadata_path=movie_metadata_path
         )
         self.prompt = self._load_prompt(prompt_path)
-        self.client = OpenAI(api_key=self.api_key)
 
     def _load_user_map(self, user_map_path):
         user_remap_to_org = {}
@@ -76,14 +71,12 @@ class SerendipityEvaluator:
             pd.DataFrame: Filtered movie metadata with 'remap_id' column, filtered by valid org_ids
 
         """
-        movie_map = load_id_map(movie_map_path)
         metadata = pd.read_csv(movie_metadata_path)
 
-        valid_org_ids = set(movie_map.keys())
+        valid_org_ids = set(self.movie_remap_to_org.values())
         filtered_metadata = metadata[metadata['movieId'].isin(valid_org_ids)].copy()
-        filtered_metadata['remap_id'] = filtered_metadata['movieId'].map(movie_map)
 
-        return filtered_metadata.set_index('remap_id')
+        return filtered_metadata.set_index('movieId')
 
     def _load_prompt(self, prompt_path):
         with open(prompt_path, 'r') as f:
@@ -169,9 +162,14 @@ class SerendipityEvaluator:
 
                 movies = []
                 for remap_movie_id in remap_movie_ids:
-                    title = self.movie_metadata.loc[remap_movie_id, 'title']
-                    genres = self.movie_metadata.loc[remap_movie_id, 'genres']
-                    genres_list = genres.split('|')
+                    org_movie_id = self.movie_remap_to_org[remap_movie_id]
+
+                    title = self.movie_metadata.loc[org_movie_id, 'title']
+                    genres = self.movie_metadata.loc[org_movie_id, 'genres']
+                    try:
+                        genres_list = genres.split('|')
+                    except AttributeError:
+                        genres_list = ['(no genres listed)'] # if no genres are tagged
 
                     movies.append((title, genres_list))
 
@@ -186,12 +184,12 @@ class SerendipityEvaluator:
         Construct messages for the LLM input
 
         Args:
-            history_movies (list): List of tuples (title, genres) for user history
+            history_movies (list[tuple[str, list[str]]]): List of tuples (title, genres) for user history
             candidate_title (str): Title of the candidate movie
-            candidate_genres (list): List of genres of the candidate movie
+            candidate_genres (list[str]): List of genres of the candidate movie
 
         Returns:
-            list: List of message dictionaries formatted for the OpenAI API
+            list[dict[str, str]]: List of message dictionaries formatted for the OpenAI API
                 Each dictionary contains:
                     - 'role' (str): The role of the message sender ('system' or 'user')
                     - 'content' (str): The content of the message, including the system instruction
@@ -227,46 +225,91 @@ class SerendipityEvaluator:
 
         return messages
 
-    def evaluate(
-        self, recommendations, user_history_path, output_path=None, dry_run=False
+    async def _evaluate_single_recommendation(
+        self, messages, org_user_id, org_movie_id,
+        candidate_title, candidate_genres, semaphore, dry_run
     ):
         """
-        Evaluate recommendations
+        Evaluate a single recommendation asynchronously
 
         Args:
-            recommendations (dict): Recommendation results {remap_user_id (str): [remap_movie_id (int), ...]}
-            user_history_path (str): Path to user history csv
-            output_path (str, optional): Path to save results
-            dry_run (bool): If True, do not call API
+            messages (list[dict]): A list of dictionaries containing the system instructions and the evaluation query
+            org_user_id (int): Original user ID
+            org_movie_id (int): Original movie ID
+            candidate_title (str): The title of the candidate movie
+            candidate_genres (list[str]): A list of genre strings associated with the candidate movie
+            semaphore (asyncio.Semaphore): A semaphore to control the number of concurrent API calls
+            dry_run (bool): If True, returns dummy result; not calling API
 
         Returns:
-            dict: Evaluation results {remap_user_id: [{'remap_movie_id': int, 'title': str, 'serendipity_rating': int}]}
+            dict: Evaluation result including serendipity rating
+        """
+        async with semaphore:
+            if dry_run:
+                return {
+                    'org_user_id': org_user_id,
+                    'org_movie_id': int(org_movie_id),
+                    'title': candidate_title,
+                    'genres': candidate_genres,
+                    'serendipity_rating': 3
+                }
+
+            response = await self.llm_client.chat.completions.create(
+                model=self.llm_model,
+                messages=messages,
+                temperature=0,
+                max_tokens=10
+            )
+            content = response.choices[0].message.content.strip()
+            match = re.search(r'\b([1-5])\b', content)
+            serendipity_rating = int(match.group(1))
+
+            return {
+                'org_user_id': org_user_id,
+                'org_movie_id': int(org_movie_id),
+                'title': candidate_title,
+                'genres': candidate_genres,
+                'serendipity_rating': serendipity_rating
+            }
+
+    async def evaluate(
+        self, recommendations, user_history_path, output_path=None, dry_run=False, concurrency=50
+    ):
+        """
+        Evaluate recommendations with async concurrency
+
+        Args:
+            recommendations (dict[str, list[int]]): Recommendation results {remap_user_id (str): [remap_movie_id (int), ...]}
+            user_history_path (str): Path to user history csv
+            output_path (str): Path to save results
+            dry_run (bool): If True, do not call API
+            concurrency (int): Max number of concurrent API requests
+
+        Returns:
+            dict[int, list[dict]]: Evaluation results {remap_user_id: [{'remap_movie_id': int, 'title': str, 'serendipity_rating': int}]}
 
         """
         print(f"Loading user history from {user_history_path}...")
         user_history_map = self._load_user_history(user_history_path)
         print("User history loaded.")
 
+        tasks = []
         results = {}
-        total_users = len(recommendations)
+        semaphore = asyncio.Semaphore(concurrency)
 
-        processed_count = 0
-        for i, (remap_user_id, rec_items) in enumerate(recommendations.items()):
+        for remap_user_id, rec_items in recommendations.items():
             remap_user_id = int(remap_user_id)
             org_user_id = self.user_remap_to_org[remap_user_id]
 
             history_movies = user_history_map[org_user_id]
-            user_results = []
 
             if not isinstance(rec_items, list):
                 rec_items = [rec_items]
 
-            print(f"[{i + 1}/{total_users}] Processing User (Org_id: {org_user_id}, Remap_id: {remap_user_id})...")
-
             for remap_movie_id in rec_items:
                 org_movie_id = self.movie_remap_to_org.get(remap_movie_id)
 
-                item_info = self.movie_metadata.loc[remap_movie_id]
+                item_info = self.movie_metadata.loc[org_movie_id]
                 candidate_title = item_info['title']
                 candidate_genres = item_info['genres']
                 candidate_genres = candidate_genres.split('|')
@@ -277,46 +320,48 @@ class SerendipityEvaluator:
                     candidate_genres=candidate_genres
                 )
 
-                serendipity_rating = None
+                if dry_run and len(tasks) < 3:
+                    tqdm.write(f'\n--- Dry Run Prompt [Org_UserID: {org_user_id}, Org_MovieID: {org_movie_id}] ---')
+                    tqdm.write(json.dumps(messages, indent=2, ensure_ascii=False))
 
-                if dry_run:
-                    serendipity_rating = 3 # Dummy rating for dry run
-                    if processed_count < 3:
-                        print(f'\n--- Dry Run Prompt [User OrgID: {org_user_id} | Movie OrgID: {org_movie_id}] ---')
-                        print(json.dumps(messages, indent=2, ensure_ascii=False))
-                        time.sleep(0.01)
-                else:
-                    response = self.client.chat.completions.create(
-                        model=self.llm, messages=messages, temperature=0, max_tokens=10
+                tasks.append(
+                    self._evaluate_single_recommendation(
+                        messages=messages, org_user_id=org_user_id, org_movie_id=org_movie_id,
+                        candidate_title=candidate_title, candidate_genres=candidate_genres,
+                        semaphore=semaphore, dry_run=dry_run
                     )
-                    content = response.choices[0].message.content
-                    if content:
-                        match = re.search(r'\b[1-5]\b', content)
-                        if match:
-                            serendipity_rating = int(match.group())
-                    time.sleep(0.2)
+                )
 
-                user_results.append({
-                    'org_movie_id': int(org_movie_id),
-                    'title': candidate_title,
-                    'genres': candidate_genres,
-                    'serendipity_rating': serendipity_rating
-                })
+        if dry_run:
+            print(f'[Dry Run] Prepared {len(tasks)} tasks')
+        else:
+            print(f'Starting execution of {len(tasks)} tasks (concurrency={concurrency})')
 
-            results[org_user_id] = user_results
-            processed_count += 1
+        raw_results = []
+        for f in tqdm(asyncio.as_completed(tasks), total=len(tasks)):
+            raw_result = await f
+            if raw_result:
+                raw_results.append(raw_result)
 
-            if dry_run and processed_count >= 3:
-                break
+        results = {}
+        for raw_result in raw_results:
+            org_user_id = raw_result['org_user_id']
 
-        total_serendipity_score = 0
+            if org_user_id not in results:
+                results[org_user_id] = []
+
+            clean_result = {k: v for k, v in raw_result.items() if k != 'org_user_id'}
+            results[org_user_id].append(clean_result)
+
         count = 0
-        for result in results.values():
-            for item in result:
+        total_score = 0
+        for user_items in results.values():
+            for item in user_items:
                 if item['serendipity_rating'] is not None:
-                    total_serendipity_score += item['serendipity_rating']
+                    total_score += item['serendipity_rating']
                     count += 1
-        print(f'Average Serendipity Score: {total_serendipity_score / count:.4f}')
+
+        print(f'Average serendipity score: {total_score / count:.4f}')
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, 'w') as f:
