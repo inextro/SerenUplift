@@ -37,6 +37,10 @@ def parse_args():
         help='Path to user rating history file'
     )
     parser.add_argument(
+        '--history_length', type=int, default=20,
+        help='Number of history items to be provided'
+    )
+    parser.add_argument(
         '--llm', type=str, default='gpt-4o-mini',
         help='Model to use for evaluation'
     )
@@ -81,13 +85,14 @@ async def main():
     with open(args.rec_path, 'r') as f:
         recommendations = json.load(f)
 
-    recommendations = dict(list(recommendations.items())[:5])
+    recommendations = dict(list(recommendations.items()))
 
     await evaluator.evaluate(
         recommendations=recommendations,
         user_history_path=args.user_history_path,
         output_path=save_path,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        history_length=args.history_length
     )
 
 

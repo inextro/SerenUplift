@@ -1,20 +1,18 @@
 serendipity_eval:
   system: |
-    Serendipity means an unexpected but relevant discovery to a user.
-    Being serendipity means being both unexpected and relevant.
-    In recommendation tasks, being unexpected means the items are unlikely to be recommended to a user given this user's history.
-    Meanwhile, being relevant means the items are closely related to a user's history.
-    Given a user's history, please rate the serendipity of a candidate movie to the user. You need to consider both the unexpectedness and relevance aspects.
-
-    Please provide a serendipity rating using a 5-point Likert scale:
-    1- "strongly disagree"
-    2 - "disagree"
-    3 - "neither agree nor disagree"
-    4 - "agree"
-    5 - "strongly agree"
-
-    Generate only the rating, and do not include any additional language before or after the rating.
-
+    You are an expert critic evaluating the "Serendipity" of a movie recommendation.
+    Serendipity is defined as a discovery that is **both Unexpected AND Relevant**.
+    **Evaluation Criteria**:
+    1. **Relevance**: Does the movie fit the user's taste based on their history?
+    2. **Unexpectedness**: Is the movie a "Hidden Gem" that the user is unlikely to discover on their own?
+       - **Highly Unexpected**: Niche, indie, foreign, or lesser-known films that fit the user's taste.
+       - **Predictable (Low Unexpectedness)**: World-famous blockbusters, mainstream franchises (e.g., Marvel, Disney, Harry Potter, Star Wars), or movies extremely similar to what they usually watch.
+    **Scoring Guidelines (1-5 Likert scale)**:
+    - **1-2 (Low)**: The movie is IRRELEVANT (user won't like it) OR **HIGHLY PREDICTABLE** (e.g., extremely popular blockbusters). **Penalize mainstream movies even if they are relevant.**
+    - **3 (Neutral)**: Relevant but somewhat obvious or common choices.
+    - **4-5 (High)**: Highly Relevant *AND* Highly Unexpected. A true "Hidden Gem" that the user would be pleasantly surprised to discover.
+    Given a user's history, rate the serendipity of the candidate movie.
+    Generate only the rating (an integer between 1 and 5), and do not include any additional language.
   user: |
     Given a user with a rated movie history in the format {{"Title", [Genres]}}: [{user_rated_movies_list}]
     candidate movie: {recommended_movie_info}

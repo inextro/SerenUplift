@@ -1,5 +1,4 @@
 import os
-import re
 import json
 import yaml
 import asyncio
@@ -178,7 +177,7 @@ class SerendipityEvaluator:
         return user_history
 
     def _construct_messages(
-        self, history_movies, candidate_title, candidate_genres, history_length=40
+        self, history_movies, candidate_title, candidate_genres, history_length
     ):
         """
         Construct messages for the LLM input
@@ -218,22 +217,18 @@ class SerendipityEvaluator:
             }
         )
 
-        messages = [
-            {'role': 'system', 'content': system_template},
-            {'role': 'user', 'content': user_content}
-        ]
-
-        return messages
+        return system_template, user_content
 
     async def _evaluate_single_recommendation(
-        self, messages, org_user_id, org_movie_id,
+        self, system_instruction, user_input, org_user_id, org_movie_id,
         candidate_title, candidate_genres, semaphore, dry_run
     ):
         """
         Evaluate a single recommendation asynchronously
 
         Args:
-            messages (list[dict]): A list of dictionaries containing the system instructions and the evaluation query
+            system_instruction (str): The system instruction
+            user_input (str): The user input query
             org_user_id (int): Original user ID
             org_movie_id (int): Original movie ID
             candidate_title (str): The title of the candidate movie
@@ -254,26 +249,23 @@ class SerendipityEvaluator:
                     'serendipity_rating': 3
                 }
 
-            response = await self.llm_client.chat.completions.create(
+            response = await self.llm_client.responses.create(
                 model=self.llm_model,
-                messages=messages,
+                instructions=system_instruction,
+                input=user_input,
                 temperature=0,
-                max_tokens=10
             )
-            content = response.choices[0].message.content.strip()
-            match = re.search(r'\b([1-5])\b', content)
-            serendipity_rating = int(match.group(1))
 
             return {
                 'org_user_id': org_user_id,
                 'org_movie_id': int(org_movie_id),
                 'title': candidate_title,
                 'genres': candidate_genres,
-                'serendipity_rating': serendipity_rating
+                'serendipity_rating': response.output_text
             }
 
     async def evaluate(
-        self, recommendations, user_history_path, output_path=None, dry_run=False, concurrency=50
+        self, recommendations, user_history_path, history_length, output_path=None, dry_run=False, concurrency=50
     ):
         """
         Evaluate recommendations with async concurrency
@@ -281,6 +273,7 @@ class SerendipityEvaluator:
         Args:
             recommendations (dict[str, list[int]]): Recommendation results {remap_user_id (str): [remap_movie_id (int), ...]}
             user_history_path (str): Path to user history csv
+            history_length (int): Number of history items to be provided
             output_path (str): Path to save results
             dry_run (bool): If True, do not call API
             concurrency (int): Max number of concurrent API requests
@@ -296,6 +289,7 @@ class SerendipityEvaluator:
         tasks = []
         results = {}
         semaphore = asyncio.Semaphore(concurrency)
+        skip_count = 0
 
         for remap_user_id, rec_items in recommendations.items():
             remap_user_id = int(remap_user_id)
@@ -309,24 +303,35 @@ class SerendipityEvaluator:
             for remap_movie_id in rec_items:
                 org_movie_id = self.movie_remap_to_org.get(remap_movie_id)
 
-                item_info = self.movie_metadata.loc[org_movie_id]
+                try:
+                    item_info = self.movie_metadata.loc[org_movie_id]
+                except KeyError: # no metadata
+                    skip_count += 1
+                    continue
+
                 candidate_title = item_info['title']
                 candidate_genres = item_info['genres']
-                candidate_genres = candidate_genres.split('|')
+                try:
+                    candidate_genres = candidate_genres.split('|')
+                except AttributeError:
+                    candidate_genres = ['(no genres listed)']
 
-                messages = self._construct_messages(
+                instructions, user_input = self._construct_messages(
                     history_movies=history_movies,
                     candidate_title=candidate_title,
-                    candidate_genres=candidate_genres
+                    candidate_genres=candidate_genres,
+                    history_length=history_length
                 )
 
                 if dry_run and len(tasks) < 3:
                     tqdm.write(f'\n--- Dry Run Prompt [Org_UserID: {org_user_id}, Org_MovieID: {org_movie_id}] ---')
-                    tqdm.write(json.dumps(messages, indent=2, ensure_ascii=False))
+                    tqdm.write(f'Instructions: {instructions}')
+                    tqdm.write(f'Input: {user_input}')
 
                 tasks.append(
                     self._evaluate_single_recommendation(
-                        messages=messages, org_user_id=org_user_id, org_movie_id=org_movie_id,
+                        system_instruction=instructions, user_input=user_input,
+                        org_user_id=org_user_id, org_movie_id=org_movie_id,
                         candidate_title=candidate_title, candidate_genres=candidate_genres,
                         semaphore=semaphore, dry_run=dry_run
                     )
@@ -336,6 +341,8 @@ class SerendipityEvaluator:
             print(f'[Dry Run] Prepared {len(tasks)} tasks')
         else:
             print(f'Starting execution of {len(tasks)} tasks (concurrency={concurrency})')
+            if skip_count > 0:
+                print(f"Skipped {skip_count} recommendations due to missing metadata.")
 
         raw_results = []
         for f in tqdm(asyncio.as_completed(tasks), total=len(tasks)):
@@ -358,7 +365,7 @@ class SerendipityEvaluator:
         for user_items in results.values():
             for item in user_items:
                 if item['serendipity_rating'] is not None:
-                    total_score += item['serendipity_rating']
+                    total_score += int(item['serendipity_rating'])
                     count += 1
 
         print(f'Average serendipity score: {total_score / count:.4f}')
