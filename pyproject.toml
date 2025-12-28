@@ -10,6 +10,7 @@ dependencies = [
     "pandas>=2.3.3",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
+    "recbole>=1.2.0",
     "scikit-learn>=1.7.2",
     "scipy>=1.16.3",
     "tensorboardx>=2.6.4",
