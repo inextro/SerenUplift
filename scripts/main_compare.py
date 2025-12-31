@@ -13,6 +13,18 @@ def parse_args():
         '--baseline_data', nargs='+', required=True,
         help="List of paths to baseline models' recommendation lists"
     )
+    parser.add_argument(
+        '--paired_t', action='store_true',
+        help='Perform paired t-test between the reference and target recommendation lists'
+    )
+    parser.add_argument(
+        '--cohen', action='store_true',
+        help='Calculate Cohen\'s d between the reference and target recommendation lists'
+    )
+    parser.add_argument(
+        '--wilcoxon', action='store_true',
+        help='Perform Wilcoxon signed-rank test (robust to non-normality)'
+    )
 
     return parser.parse_args()
 
@@ -24,12 +36,12 @@ def main():
     results = []
 
     ref_name = os.path.basename(args.reference_data).replace('.json', '')
-    ref_result = analyzer.analyze(args.reference_data, ref_name)
+    ref_result = analyzer.analyze(ref_name, args.reference_data)
     results.append(ref_result)
 
     for path in args.baseline_data:
         model_name = os.path.basename(path).replace('.json', '')
-        result = analyzer.analyze(path, model_name)
+        result = analyzer.analyze(model_name, path)
         results.append(result)
 
     header = f"| {'Model':^30} | {'Popularity':^12} | {'Unique':^10} | {'Coverage':^10} | {'Serendipity':^12} |"
@@ -46,6 +58,27 @@ def main():
         )
 
     print(divider + "\n")
+
+    if args.paired_t:
+        print('[Paired T-Test Results]')
+        for path in args.baseline_data:
+            model_name = os.path.basename(path).replace('.json', '')
+            t_res = analyzer.paired_t_test(path)
+            print(f"> {model_name}: t-stat={t_res['t_stat']:.4f}, p-value={t_res['p_value']:.4e}")
+
+    if args.cohen:
+        print('[Cohen\'s d Results]')
+        for path in args.baseline_data:
+            model_name = os.path.basename(path).replace('.json', '')
+            c_res = analyzer.cohen_d(path)
+            print(f"> {model_name}: Cohen's d={c_res['cohen_d']:.4f}")
+
+    if args.wilcoxon:
+        print('[Wilcoxon Signed-Rank Test Results]')
+        for path in args.baseline_data:
+            model_name = os.path.basename(path).replace('.json', '')
+            w_res = analyzer.wilcoxon_test(path)
+            print(f"> {model_name}: stat={w_res['stat']:.4f}, p-value={w_res['p_value']:.4e}")
 
 
 if __name__ == '__main__':
