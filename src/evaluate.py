@@ -147,6 +147,13 @@ class SerendipityEvaluator:
     def _load_history_from_txt(self, history_path, history_limit):
         user_history = {}
 
+        preprocessor = Preprocessor()
+        _, history_df = preprocessor.preprocess()
+
+        ts_map = {}
+        for uid, group in history_df.groupby('userId'):
+            ts_map[uid] = dict(zip(group['movieId'], group['tstamp']))
+
         with open(history_path, 'r') as f:
             for line in f:
                 parts = list(map(int, line.strip().split()))
@@ -156,8 +163,18 @@ class SerendipityEvaluator:
 
                 org_user_id = self.user_remap_to_org[remap_user_id]
 
-                if len(remap_movie_ids) > history_limit:
-                    remap_movie_ids = remap_movie_ids[-history_limit:]
+                movie_ts_list = []
+                for remap_movie_id in remap_movie_ids:
+                    org_movie_id = self.movie_remap_to_org[remap_movie_id]
+                    timestamp = ts_map[org_user_id][org_movie_id]
+                    movie_ts_list.append((remap_movie_id, timestamp))
+
+                movie_ts_list.sort(key=lambda x: x[1])
+
+                if len(movie_ts_list) > history_limit:
+                    movie_ts_list = movie_ts_list[-history_limit:]
+
+                remap_movie_ids = [x[0] for x in movie_ts_list]
 
                 movies = []
                 for remap_movie_id in remap_movie_ids:
@@ -265,7 +282,7 @@ class SerendipityEvaluator:
             }
 
     async def evaluate(
-        self, recommendations, user_history_path, history_length, output_path=None, dry_run=False, concurrency=50
+        self, recommendations, user_history_path, history_length, concurrency, output_path=None, dry_run=False
     ):
         """
         Evaluate recommendations with async concurrency
@@ -344,21 +361,43 @@ class SerendipityEvaluator:
             if skip_count > 0:
                 print(f"Skipped {skip_count} recommendations due to missing metadata.")
 
-        raw_results = []
+        raw_results = [] # random ordered recommendation results
         for f in tqdm(asyncio.as_completed(tasks), total=len(tasks)):
             raw_result = await f
             if raw_result:
                 raw_results.append(raw_result)
 
-        results = {}
+        results_map = {}
         for raw_result in raw_results:
             org_user_id = raw_result['org_user_id']
-
-            if org_user_id not in results:
-                results[org_user_id] = []
+            if org_user_id not in results_map:
+                results_map[org_user_id] = []
 
             clean_result = {k: v for k, v in raw_result.items() if k != 'org_user_id'}
-            results[org_user_id].append(clean_result)
+            results_map[org_user_id].append(clean_result)
+
+        results = {} # original ordered recommendation lists
+        for remap_user_id, rec_items in recommendations.items():
+            remap_user_id = int(remap_user_id)
+            org_user_id = self.user_remap_to_org[remap_user_id]
+
+            if org_user_id not in results_map:
+                continue
+
+            evluated_items = results_map[org_user_id]
+            evaluated_map = {item['org_movie_id']: item for item in evluated_items}
+
+            sorted_user_results = []
+            if not isinstance(rec_items, list):
+                rec_items = [rec_items]
+
+            for remap_movie_id in rec_items:
+                org_movie_id = self.movie_remap_to_org.get(remap_movie_id)
+
+                if org_movie_id in evaluated_map:
+                    sorted_user_results.append(evaluated_map[org_movie_id])
+
+            results[org_user_id] = sorted_user_results
 
         count = 0
         total_score = 0

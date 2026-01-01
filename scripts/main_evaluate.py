@@ -48,6 +48,10 @@ def parse_args():
         '--dry_run', action='store_true',
         help='If true, do not call the API'
     )
+    parser.add_argument(
+        '--concurrency', type=int, default=200,
+        help='Max number of concurrent API requests'
+    )
 
     return parser.parse_args()
 
@@ -92,7 +96,8 @@ async def main():
         user_history_path=args.user_history_path,
         output_path=save_path,
         dry_run=args.dry_run,
-        history_length=args.history_length
+        history_length=args.history_length,
+        concurrency=args.concurrency
     )
 
 
