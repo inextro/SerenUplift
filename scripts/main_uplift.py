@@ -20,7 +20,7 @@ def main(configs, user_emb_path, movie_emb_path):
     )
 
     df_uplift = t_learner.compute_uplift()
-    df_uplift.to_csv('./data/processed_data/pred_uplift.csv', index=False)
+    df_uplift.to_csv('data/processed_data/pred_uplift.csv', index=False)
 
 
 if __name__ == '__main__':
@@ -37,6 +37,6 @@ if __name__ == '__main__':
 
     main(
         configs=configs,
-        user_emb_path='./embeddings/user_emb_16.npy',
-        movie_emb_path='./embeddings/movie_emb_16.npy'
+        user_emb_path='data/processed_data/embeddings/user_emb_16.npy',
+        movie_emb_path='data/processed_data/embeddings/movie_emb_16.npy'
     )

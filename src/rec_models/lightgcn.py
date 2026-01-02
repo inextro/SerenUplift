@@ -4,8 +4,8 @@ from .abstract_recommender import AbstractRecommender
 
 class LightGCN(AbstractRecommender):
     def __init__(self, embedding_dims=16):
-        user_emb_path = f'embeddings/user_emb_{embedding_dims}.npy'
-        movie_emb_path = f'embeddings/movie_emb_{embedding_dims}.npy'
+        user_emb_path = f'data/processed_data/embeddings/user_emb_{embedding_dims}.npy'
+        movie_emb_path = f'data/processed_data/embeddings/movie_emb_{embedding_dims}.npy'
 
         self.user_embs = np.load(user_emb_path)
         self.item_embs = np.load(movie_emb_path)
