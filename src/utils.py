@@ -1,6 +1,5 @@
 import os
 import sys
-
 import numpy as np
 import pandas as pd
 import torch
@@ -13,11 +12,11 @@ if len(sys.argv) == 1:
     sys.argv.extend([
         '--dataset', 'movielens',
         '--layer', '2',
-        '--recdim', '16'
+        '--recdim', '64'
     ])
-import dataloader
 import model
 import world
+import dataloader
 
 
 def get_embeddings():
@@ -61,7 +60,7 @@ if __name__ == '__main__':
     print(f'Total number of users: {user_emb.shape[0]}')
     print(f'Total number of movies: {movie_emb.shape[0]}')
 
-    save_path = './embeddings/'
+    save_path = 'data/processed_data/embeddings/'
     os.makedirs(save_path, exist_ok=True)
 
     np.save(os.path.join(save_path, f'user_emb_{user_emb.shape[1]}.npy'), user_emb)
