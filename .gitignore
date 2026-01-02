@@ -17,3 +17,8 @@ wheels/
 
 # vscode
 .vscode
+
+# log & ckpts
+log/
+log_tensorboard/
+recbole_ckpts/

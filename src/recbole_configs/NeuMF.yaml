@@ -1,0 +1,16 @@
+# NeuMF Hyperparameters
+mf_embedding_size: 64
+mlp_embedding_size: 64
+mlp_hidden_size: [256, 128]
+dropout_prob: 0.1
+mf_train: True
+mlp_train: True
+use_pretrain: False
+mf_pretrain_path: None
+mlp_pretrain_path: None
+train_neg_sample_args:
+  distribution: uniform
+  sample_num: 1
+  alpha: 1.0
+  dynamic: False
+  candidate_num: 0

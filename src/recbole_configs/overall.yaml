@@ -1,0 +1,38 @@
+# Environment Settings
+data_path: 'data/processed_data/'
+dataset: 'ml-belief'
+checkpoint_dir: 'recbole_ckpts'
+gpu_id: 0
+use_gpu: True
+seed: 42
+state: 'INFO'
+reproducibility: True
+show_progress: True
+save_dataset: False
+save_dataloaders: False
+
+# Data Settings
+field_separator: "\t"
+load_col:
+  inter: ['user_id', 'item_id', 'rating', 'timestamp']
+USER_ID_FIELD: 'user_id'
+ITEM_ID_FIELD: 'item_id'
+RATING_FIELD: 'rating'
+TIME_FIELD: 'timestamp'
+
+# Default Train Settings
+epochs: 1000
+train_batch_size: 2048
+eval_batch_size: 64
+learning_rate: 0.001
+train_neg_sample_args: null
+stopping_step: 10
+
+# Default Eval Settings
+eval_args:
+  group_by: 'user'
+  order: 'TO'
+  split: {'RS': [0.8, 0.1, 0.1]}
+  mode: 'full'
+topk: 20
+valid_metric: 'Recall@20'
