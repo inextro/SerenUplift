@@ -91,7 +91,7 @@ class ComparativeAnalyzer:
 
         return {
             "Model": model_name,
-            "Popularity": avg_pop,
+            "Inv. Popularity": avg_pop,
             "Coverage": coverage_ratio,
             "Serendipity": avg_seren,
             "Unique_Items": len(unique_items),

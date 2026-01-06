@@ -44,8 +44,8 @@ def main():
         result = analyzer.analyze(model_name, path)
         results.append(result)
 
-    header = f"| {'Model':^30} | {'Popularity':^12} | {'Unique':^10} | {'Coverage':^10} | {'Serendipity':^12} |"
-    divider = f"|{'-' * 32}|{'-' * 14}|{'-' * 12}|{'-' * 12}|{'-' * 14}|"
+    header = f"| {'Model':^30} | {'Inv. Popularity':^15} | {'Unique':^10} | {'Coverage':^10} | {'Serendipity':^12} |"
+    divider = f"|{'-' * 32}|{'-' * 17}|{'-' * 12}|{'-' * 12}|{'-' * 14}|"
 
     print("\n" + divider)
     print(header)
@@ -53,7 +53,7 @@ def main():
 
     for res in results:
         print(
-            f"| {res['Model']:<30} | {res['Popularity']:>12.4f} | "
+            f"| {res['Model']:<30} | {res['Inv. Popularity']:>15.4f} | "
             f"{res['Unique_Items']:>10,} | {res['Coverage']:>10.2%} | {res['Serendipity']:>12.4f} |"
         )
 

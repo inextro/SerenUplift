@@ -33,7 +33,7 @@ def parse_args():
         help='Path to the pre-defined prompt file'
     )
     parser.add_argument(
-        '--user_history_path', type=str, required=True,
+        '--user_history_path', type=str, default='data/raw_data/user_rating_history.csv',
         help='Path to user rating history file'
     )
     parser.add_argument(
@@ -59,15 +59,6 @@ def parse_args():
 async def main():
     load_dotenv()
     args = parse_args()
-
-    history_extension = os.path.splitext(args.user_history_path)[1]
-    rec_filename = os.path.basename(args.rec_path).lower()
-
-    if history_extension == '.txt' and 'lightgcn' not in rec_filename:
-        raise ValueError(f"Compatibiility Mismatch: '.txt' history expects LightGCN results, but got '{rec_filename}'")
-
-    if history_extension == '.csv' and 'seren' not in rec_filename:
-        raise ValueError(f"Compatibiility Mismatch: '.csv' history expects SerenUplift results, but got '{rec_filename}'")
 
     rec_filename = os.path.basename(args.rec_path)
     save_filename = f'{os.path.splitext(rec_filename)[0]}.json'

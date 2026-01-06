@@ -100,23 +100,10 @@ class SerendipityEvaluator:
             1: ...
             }
         """
-        extension = os.path.splitext(user_history_path)[1]
-
-        if extension == '.csv':
-            return self._load_history_from_csv(
-                history_path=user_history_path, history_limit=history_limit
-            )
-
-        elif extension == '.txt':
-            return self._load_history_from_txt(
-                history_path=user_history_path, history_limit=history_limit
-            )
-
-    def _load_history_from_csv(self, history_path, history_limit):
         user_history = {}
         meta_df = pd.read_csv(self.movie_metadata_path).set_index('movieId')
 
-        history_df = pd.read_csv(history_path)
+        history_df = pd.read_csv(user_history_path)
         preprocessor = Preprocessor()
         _, history_df = preprocessor.preprocess()
 
@@ -141,55 +128,6 @@ class SerendipityEvaluator:
                 movies.append((title, genres_list))
 
             user_history[org_user_id] = movies
-
-        return user_history
-
-    def _load_history_from_txt(self, history_path, history_limit):
-        user_history = {}
-
-        preprocessor = Preprocessor()
-        _, history_df = preprocessor.preprocess()
-
-        ts_map = {}
-        for uid, group in history_df.groupby('userId'):
-            ts_map[uid] = dict(zip(group['movieId'], group['tstamp']))
-
-        with open(history_path, 'r') as f:
-            for line in f:
-                parts = list(map(int, line.strip().split()))
-
-                remap_user_id = parts[0]
-                remap_movie_ids = parts[1:]
-
-                org_user_id = self.user_remap_to_org[remap_user_id]
-
-                movie_ts_list = []
-                for remap_movie_id in remap_movie_ids:
-                    org_movie_id = self.movie_remap_to_org[remap_movie_id]
-                    timestamp = ts_map[org_user_id][org_movie_id]
-                    movie_ts_list.append((remap_movie_id, timestamp))
-
-                movie_ts_list.sort(key=lambda x: x[1])
-
-                if len(movie_ts_list) > history_limit:
-                    movie_ts_list = movie_ts_list[-history_limit:]
-
-                remap_movie_ids = [x[0] for x in movie_ts_list]
-
-                movies = []
-                for remap_movie_id in remap_movie_ids:
-                    org_movie_id = self.movie_remap_to_org[remap_movie_id]
-
-                    title = self.movie_metadata.loc[org_movie_id, 'title']
-                    genres = self.movie_metadata.loc[org_movie_id, 'genres']
-                    try:
-                        genres_list = genres.split('|')
-                    except AttributeError:
-                        genres_list = ['(no genres listed)'] # if no genres are tagged
-
-                    movies.append((title, genres_list))
-
-                user_history[org_user_id] = movies
 
         return user_history
 

@@ -9,7 +9,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--model', type=str, required=True,
-        choices=['LightGCN', 'NeuMF', 'GRU4Rec', 'SASRec', 'BERT4Rec'],
+        choices=['NeuMF', 'LightGCN', 'GRU4Rec', 'SASRec', 'BERT4Rec'],
         help='Model name to train/inference'
     )
     parser.add_argument(
