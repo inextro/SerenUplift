@@ -7,19 +7,19 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--reference_data', type=str, required=True,
-        help="Path to the reference model's recommendation list (e.g., SerenUplift)"
+        help="Path to the reference model's recommendation list"
     )
     parser.add_argument(
         '--baseline_data', nargs='+', required=True,
-        help="List of paths to baseline models' recommendation lists"
+        help="List of paths to baseline models' recommendation list"
     )
     parser.add_argument(
         '--paired_t', action='store_true',
-        help='Perform paired t-test between the reference and target recommendation lists'
+        help='Perform paired t-test between the reference and target recommendation list'
     )
     parser.add_argument(
         '--cohen', action='store_true',
-        help='Calculate Cohen\'s d between the reference and target recommendation lists'
+        help='Calculate Cohen\'s d between the reference and target recommendation list'
     )
     parser.add_argument(
         '--wilcoxon', action='store_true',
