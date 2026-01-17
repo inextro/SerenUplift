@@ -1,12 +1,11 @@
 import pandas as pd
 from tqdm import tqdm
 from itertools import product
-from ..preprocess import Preprocessor
-from .abstract_recommender import AbstractRecommender
+from src.preprocess import Preprocessor
 
 
-class SerenUplift(AbstractRecommender):
-    def __init__(self, df='./data/processed_data/pred_uplift.csv'):
+class SerenUplift:
+    def __init__(self, df='./data/processed_data/pred_uplift_16.csv'):
         """
         Initialize the recommender with the preprocessed dataframe
         It should already be filtered for unseen items
@@ -16,22 +15,6 @@ class SerenUplift(AbstractRecommender):
         """
         self.uplift = self._preprocess(df)
         print(f'Recommender initialized with {self.uplift.shape[0]:,} pairs')
-
-    @classmethod
-    def load_from_path(
-        cls, uplift_path='./data/processed_data/pred_uplift.csv'
-    ):
-        """
-        Returns a SerenUplift instance loaded from the given path
-
-        Args:
-            uplift_path (str): Path to the uplift result file
-
-        Returns:
-            SerenUplift: A SerenUplift instance initialized with the given uplift result file
-        """
-        uplift = cls._preprocess(uplift_path)
-        return cls(uplift)
 
     def _preprocess(self, uplift_path='./data/processed_data/pred_uplift.csv'):
         """
@@ -81,7 +64,7 @@ class SerenUplift(AbstractRecommender):
             uplift_thresholds (list[float]): Threshold values for uplift score (Default: 2.0)
             post_thresholds (list[float]): Threshold values for predicted post-rating (Default: 4.0)
         """
-        print(f'| {"Uplift Threshold":^16} | {"Post Threshold":^14} | {"#Candidates":^12} | {"#Users":^6} | {"Min":^6} | {"Max":^6} | {"Mean":^6} | {"Median":^6} |')
+        print(f'| {"Uplift Threshold":^16} | {"Post Threshold":^14} | {"#Candidates":^12} | {"#Users":^6} | {"Min":^8} | {"Max":^8} | {"Mean":^8} | {"Median":^8} |')
 
         combinations = list(product(uplift_thresholds, post_thresholds))
         for uplift_threshold, post_threshold in tqdm(combinations):
@@ -96,8 +79,8 @@ class SerenUplift(AbstractRecommender):
             tqdm.write(
                 f'| {uplift_threshold:>16.1f} | {post_threshold:>14.1f} | '
                 f'{candidates.shape[0]:>12,} | {len(user_counts):>6,} | '
-                f'{user_counts.min():>6,} | {user_counts.max():>6,} | '
-                f'{user_counts.mean():>6,.2f} | {user_counts.median():>6} |'
+                f'{user_counts.min():>8,} | {user_counts.max():>8,} | '
+                f'{user_counts.mean():>8,.2f} | {user_counts.median():>8} |'
             )
 
     def recommend(
@@ -136,3 +119,8 @@ class SerenUplift(AbstractRecommender):
         )
 
         return recommendations
+
+
+if __name__ == '__main__':
+    model = SerenUplift()
+    model.get_candidate_stats(uplift_thresholds=[1.0, 2.0, 3.0])
