@@ -7,11 +7,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--reference_data', type=str, required=True,
-        help="Path to the reference model's recommendation list"
+        help='Path to the reference model\'s (evaluated)recommendation list'
     )
     parser.add_argument(
         '--baseline_data', nargs='+', required=True,
-        help="List of paths to baseline models' recommendation list"
+        help='List of paths to baseline models\' (evaluated) recommendation list'
     )
     parser.add_argument(
         '--paired_t', action='store_true',

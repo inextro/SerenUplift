@@ -5,7 +5,7 @@ from src.preprocess import Preprocessor
 
 
 class SerenUplift:
-    def __init__(self, df='./data/processed_data/pred_uplift_16.csv'):
+    def __init__(self, df='./data/processed_data/pred_uplift.csv'):
         """
         Initialize the recommender with the preprocessed dataframe
         It should already be filtered for unseen items

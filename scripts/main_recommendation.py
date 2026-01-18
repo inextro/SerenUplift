@@ -1,6 +1,6 @@
 import json
 import argparse
-from src.rec_models.seren_uplift import SerenUplift
+from src.seren_uplift import SerenUplift
 
 
 def parse_args():
@@ -11,7 +11,7 @@ def parse_args():
     )
     parser.add_argument(
         '--uplift_result_path', type=str,
-        default='data/processed_data/pred_uplift_16.csv',
+        default='data/processed_data/pred_uplift.csv',
         help='Path to the uplift result file'
     )
     parser.add_argument(
@@ -31,9 +31,7 @@ def main():
     configs = vars(args)
 
     model = SerenUplift()
-    save_path = (
-        f'results/recommendation/SerenUplift_{configs['uplift_threshold']}_{configs['post_threshold']}.json'
-    )
+    save_path = 'results/recommendation/SerenUplift.json'
 
     recommendations = model.recommend(**configs)
 

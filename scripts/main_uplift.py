@@ -26,7 +26,8 @@ def main(configs, user_emb_path, movie_emb_path):
 if __name__ == '__main__':
     configs = {
         'n_estimators': 5000,
-        'early_stopping_rounds': 50
+        'early_stopping_rounds': 50,
+        'random_state': 44
     }
 
     print('=' * 100)
@@ -37,6 +38,6 @@ if __name__ == '__main__':
 
     main(
         configs=configs,
-        user_emb_path='data/processed_data/embeddings/user_emb_16.npy',
-        movie_emb_path='data/processed_data/embeddings/movie_emb_16.npy'
+        user_emb_path='data/processed_data/embeddings/user_emb.npy',
+        movie_emb_path='data/processed_data/embeddings/movie_emb.npy'
     )
