@@ -123,4 +123,4 @@ class SerenUplift:
 
 if __name__ == '__main__':
     model = SerenUplift()
-    model.get_candidate_stats(uplift_thresholds=[1.0, 2.0, 3.0])
+    model.get_candidate_stats(uplift_thresholds=[1.0, 2.0, 3.0], post_thresholds=[4.0])

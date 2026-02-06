@@ -7,7 +7,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--reference_data', type=str, required=True,
-        help='Path to the reference model\'s (evaluated)recommendation list'
+        help='Path to the reference model\'s (evaluated) recommendation list'
     )
     parser.add_argument(
         '--baseline_data', nargs='+', required=True,
