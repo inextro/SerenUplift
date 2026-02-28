@@ -35,12 +35,13 @@ def main(evaluation_dir):
         ax.hist(seren_uplift_scores, bins=bins, alpha=0.5, label='SerenUplift', density=True, edgecolor='black', color='orange')
         ax.hist(baseline_scores, bins=bins, alpha=0.5, label=baseline, density=True, edgecolor='black', color='skyblue')
 
-        ax.set_title(f'SerenUplift vs. {baseline}')
-        ax.set_xlabel('Serendipity Rating')
-        ax.set_ylabel('Frequency')
+        ax.set_title(f'SerenUplift vs. {baseline}', fontsize=20)
+        ax.set_xlabel('Serendipity Rating', fontsize=20)
+        ax.set_ylabel('Frequency', fontsize=20)
         ax.set_xticks(range(1, 6))
         ax.set_yticks(np.arange(0, 0.4, 0.05))
-        ax.legend()
+        ax.tick_params(axis='both', labelsize=20)
+        ax.legend(fontsize=16)
 
     plt.tight_layout()
     plt.savefig('results/assets/score_distributions.png')
