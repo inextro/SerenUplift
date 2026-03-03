@@ -1,1 +1,0 @@
-main_uplift.py를 먼저 실행해서 pred_uplift.csv를 생성한 후 main_recommendation.py로 추천 결과를 얻어야함
